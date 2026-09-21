@@ -1,0 +1,12 @@
+[
+    {
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.collectivemindsinc.spokenwords",
+        "sha256_cert_fingerprints": [
+          "88:EA:1A:96:F9:AF:FA:6C:B2:5F:D4:11:32:AF:AB:2D:52:5B:A4:E8:27:8F:EC:F7:5E:06:61:13:3A:54:33:18"
+        ]
+      }
+    }
+  ]

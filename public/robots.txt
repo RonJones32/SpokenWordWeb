@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://spoken-words-d16b8.web.app/sitemap.xml

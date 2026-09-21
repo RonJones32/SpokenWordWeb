@@ -1,0 +1,24 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "NM6C538Y8C.com.collectivemindsinc.SpokenWords",
+        "paths": [
+          "/poem/*",
+          "/profile/*"
+        ],
+        "components": [
+          {
+            "/": "/poem/*",
+            "comment": "Deep links to individual poems"
+          },
+          {
+            "/": "/profile/*",
+            "comment": "Deep links to user profiles"
+          }
+        ]
+      }
+    ]
+  }
+}

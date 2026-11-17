@@ -1,35 +1,78 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
 const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
-const logger = require("firebase-functions/logger");
-
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
-
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const Stripe = require("stripe");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+
+setGlobalOptions({ maxInstances: 10 });
 
 if (!admin.apps.length) {
   admin.initializeApp();
 }
 
+// Helper to initialize Stripe only when a function is called
+function getStripe() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error("Missing STRIPE_SECRET_KEY environment variable.");
+  }
+  return new Stripe(key);
+}
+
+// 1. Create Checkout Session
+// 1. Create Checkout Session (v2 Public HTTP)
+exports.createCheckoutSession = onRequest({ invoker: "public" }, async (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  if (req.method === "OPTIONS") {
+    res.set("Access-Control-Allow-Methods", "POST");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+    res.status(204).send("");
+    return;
+  }
+
+  const stripe = getStripe();
+  const { email, username, poemLink, contestId, entryFee, successUrl, cancelUrl } = req.body.data || req.body;
+
+  try {
+    const entryRef = admin.database().ref(`contests/${contestId}/entries`).push();
+    const entryId = entryRef.key;
+
+    await entryRef.set({
+      email,
+      username,
+      poemLink,
+      status: "pending_payment",
+      submittedAt: admin.database.ServerValue.TIMESTAMP
+    });
+
+    const session = await stripe.checkout.sessions.create({
+  // REMOVE THIS LINE: payment_method_types: ["card"],
+  customer_email: email,
+  line_items: [{
+    price_data: {
+      currency: "usd",
+      product_data: {
+        name: "SpokenWords Poetry Contest Entry",
+        description: `Contest Entry for ${username}`
+      },
+      unit_amount: Math.round(entryFee * 100),
+    },
+    quantity: 1,
+  }],
+  mode: "payment",
+  success_url: `${successUrl}&session_id={CHECKOUT_SESSION_ID}&entry_id=${entryId}`,
+  cancel_url: cancelUrl,
+  metadata: { contestId, entryId }
+});
+
+    res.status(200).json({ result: { checkoutUrl: session.url } });
+  } catch (error) {
+    console.error("Stripe Checkout Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3. Existing Sitemap Function
 exports.sitemap = functions.https.onRequest(async (req, res) => {
   const baseUrl = "https://spoken-words-d16b8.web.app";
   const db = admin.database();
@@ -43,12 +86,10 @@ exports.sitemap = functions.https.onRequest(async (req, res) => {
     ];
 
     for (const [uid, userData] of Object.entries(users)) {
-      // 1. Add Profile URL
       urls.push(
         `<url><loc>${baseUrl}/profile/${uid}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`
       );
 
-      // 2. Add Public Poems URLs
       if (userData.poems) {
         for (const [poemTitle, poemData] of Object.entries(userData.poems)) {
           if (!poemData.isPrivate) {
@@ -67,7 +108,6 @@ ${urls.join("\n")}
 </urlset>`;
 
     res.set("Content-Type", "application/xml");
-    // Cache on CDN for 12 hours to avoid hammering your DB
     res.set("Cache-Control", "public, max-age=43200, s-maxage=43200");
     return res.status(200).send(xml);
   } catch (error) {

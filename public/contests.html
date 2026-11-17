@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Poetry Contests — SpokenWords</title>
+<meta name="description" content="Enter poetry contests on SpokenWords, share your verse, and win cash prizes." />
+
+<!-- Firebase Web SDKs (Compat) -->
+<script defer src="/__/firebase/12.19.0/firebase-app-compat.js"></script>
+<script defer src="/__/firebase/12.19.0/firebase-database-compat.js"></script>
+<script defer src="/__/firebase/12.19.0/firebase-functions-compat.js"></script>
+<script defer src="/__/firebase/init.js"></script>
+
+<style>
+:root {
+  --bg-color: #000000;
+  --card-bg: #141414;
+  --card-border: rgba(255, 255, 255, 0.08);
+  --accent: #ff9800;
+  --accent-hover: #fb8c00;
+  --text-primary: #ffffff;
+  --text-secondary: #9e9e9e;
+  --success: #4caf50;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a { color: var(--accent); text-decoration: none; }
+
+/* Top Sticky Banner */
+.top-banner {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: rgba(15, 15, 15, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--card-border);
+}
+.top-banner .brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.top-banner .brand span { color: var(--accent); }
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-search-icon {
+  background: #1e1e1e;
+  border: 1px solid var(--card-border);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  padding: 8px 12px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+.btn-search-icon:hover,
+.btn-search-icon.active {
+  background: #292929;
+  border-color: var(--accent);
+}
+
+.btn-download-sm {
+  background: var(--accent);
+  color: #000;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+.btn-download-sm:hover { background: var(--accent-hover); }
+
+/* Main Container */
+.content-container {
+  flex: 1;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+
+/* Header & Countdown */
+.contest-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.theme-pill {
+  display: inline-block;
+  background: rgba(255, 152, 0, 0.14);
+  border: 1px solid rgba(255, 152, 0, 0.4);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 6px 14px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+}
+.contest-header h1 {
+  font-size: 2.3rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 10px;
+}
+.contest-header h1 span { color: var(--accent); }
+
+.countdown-bar {
+  display: inline-flex;
+  gap: 12px;
+  margin-top: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  padding: 10px 18px;
+  border-radius: 14px;
+}
+.cd-unit {
+  text-align: center;
+  min-width: 48px;
+}
+.cd-unit strong {
+  display: block;
+  font-size: 1.25rem;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.cd-unit span {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+/* SECTION 2: THE POETRY POT */
+.pot-card {
+  background: radial-gradient(circle at top, rgba(255, 152, 0, 0.16), var(--card-bg) 70%);
+  border: 1px solid rgba(255, 152, 0, 0.35);
+  border-radius: 22px;
+  padding: 32px 24px;
+  text-align: center;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.pot-visual {
+  width: 110px;
+  height: 110px;
+  margin: 0 auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pot-label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.pot-amount {
+  font-size: 3.2rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  text-shadow: 0 0 28px rgba(255, 152, 0, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+.pot-sub {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* SECTION 1: CONTEST DETAILS */
+.details-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 28px;
+  margin-bottom: 24px;
+}
+.details-card h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rules-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.rules-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: #e0e0e0;
+}
+.rule-badge {
+  background: rgba(255, 152, 0, 0.15);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.8rem;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+.highlight-prize {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+/* SECTION 3: ENTRY FORM */
+.form-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 28px;
+}
+.form-card h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.form-card > p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 22px;
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+.form-group label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #fff;
+}
+.form-input {
+  width: 100%;
+  padding: 13px 16px;
+  background: #0d0d0d;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.form-input:focus {
+  border-color: var(--accent);
+}
+
+.app-instructions {
+  background: rgba(255, 152, 0, 0.08);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: #d6d6d6;
+  line-height: 1.5;
+}
+.app-instructions strong {
+  color: var(--accent);
+}
+
+.btn-submit {
+  width: 100%;
+  background: var(--accent);
+  color: #000;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 15px 20px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+.btn-submit:hover {
+  background: var(--accent-hover);
+}
+.btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status-box {
+  display: none;
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+.status-box.success {
+  display: block;
+  background: rgba(76, 175, 80, 0.12);
+  border: 1px solid rgba(76, 175, 80, 0.4);
+  color: #c8e6c9;
+}
+.status-box.error {
+  display: block;
+  background: rgba(244, 67, 54, 0.12);
+  border: 1px solid rgba(244, 67, 54, 0.4);
+  color: #ffcdd2;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 24px;
+  color: #555;
+  font-size: 0.85rem;
+  border-top: 1px solid var(--card-border);
+}
+</style>
+</head>
+<body>
+
+<header class="top-banner">
+  <a href="/" class="brand">Spoken<span>Words</span></a>
+  <div class="nav-actions">
+    <a href="/contests.html" class="btn-search-icon active">🏆 Contests</a>
+    <a href="/search" class="btn-search-icon">🔍 Search</a>
+    <a href="/" class="btn-download-sm">Get the App</a>
+  </div>
+</header>
+
+<main class="content-container">
+
+  <!-- HEADER & THEME -->
+  <div class="contest-header">
+    <div class="theme-pill">Current Theme</div>
+    <h1>"<span id="contest-theme-title">Loading...</span>"</h1>
+    <p style="color: var(--text-secondary);">Deadline: <strong id="contest-deadline-text" style="color: #fff;"></strong></p>
+
+    <div class="countdown-bar" id="countdown-bar">
+      <div class="cd-unit"><strong id="cd-days">--</strong><span>Days</span></div>
+      <div class="cd-unit"><strong id="cd-hours">--</strong><span>Hours</span></div>
+      <div class="cd-unit"><strong id="cd-mins">--</strong><span>Mins</span></div>
+      <div class="cd-unit"><strong id="cd-secs">--</strong><span>Secs</span></div>
+    </div>
+  </div>
+
+  <!-- 2. THE POETRY POT -->
+  <section class="pot-card">
+    <div class="pot-visual" aria-hidden="true">
+      <!-- Poetry Inkwell & Golden Pot SVG -->
+      <svg viewBox="0 0 120 120" width="104" height="104">
+        <defs>
+          <linearGradient id="potGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#ffb74d"/>
+            <stop offset="100%" stop-color="#e65100"/>
+          </linearGradient>
+          <linearGradient id="quillGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="100%" stop-color="#ff9800"/>
+          </linearGradient>
+        </defs>
+        <!-- Glow -->
+        <circle cx="60" cy="68" r="42" fill="rgba(255,152,0,0.12)" />
+        <!-- Quill Feather -->
+        <path d="M72 56 C84 36, 98 20, 106 14 C94 16, 76 26, 66 44 L58 62 Z" fill="url(#quillGrad)" />
+        <path d="M58 62 L98 20" stroke="#000" stroke-width="1.5" stroke-linecap="round" />
+        <!-- Inkwell / Poet's Pot -->
+        <rect x="42" y="48" width="36" height="8" rx="4" fill="#ffa726" />
+        <path d="M34 62 C34 55, 86 55, 86 62 L82 94 C80 102, 40 102, 38 94 Z" fill="url(#potGrad)" />
+        <!-- Verse Emblem on Pot -->
+        <text x="60" y="83" text-anchor="middle" fill="#000" font-size="18" font-weight="900" font-family="Georgia, serif">§</text>
+      </svg>
+    </div>
+
+    <div class="pot-label">Total Poetry Pot</div>
+    <div class="pot-amount" id="total-pot-display">$0.00</div>
+    <div class="pot-sub" id="entry-fee-badge">Entry Fee: $0.00 • Grows with every submission</div>
+  </section>
+
+  <!-- 1. CONTEST DETAILS -->
+  <section class="details-card">
+    <h2>📜 Contest Rules & Details</h2>
+    <ul class="rules-list">
+      <li>
+        <span class="rule-badge">1</span>
+        <div><strong>Write to the Theme:</strong> Submit an original poem inspired by <strong id="rule-theme-name">the current theme</strong> through the SpokenWords app.</div>
+      </li>
+      <li>
+        <span class="rule-badge">2</span>
+        <div><strong>Winner Selection:</strong> SpokenWords will review all valid entries and choose the winning poem on <strong id="rule-deadline-date">the deadline date</strong>.</div>
+      </li>
+      <li>
+        <span class="rule-badge">3</span>
+        <div><strong>Current Winner Payout:</strong> The winner takes home <span class="highlight-prize" id="winner-prize-display">$0.00</span> — and that prize keeps climbing with every new entry!</div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- 3. ENTRY & PAYMENT FORM -->
+  <section class="form-card" id="entry-form-section">
+    <h2>✍️ Enter the Contest</h2>
+    <p>Complete your details below and submit your entry fee (<strong id="form-fee-text">$0.00</strong>) to lock in your poem.</p>
+
+    <form id="contest-entry-form">
+      <div class="form-group">
+        <label for="entry-email">Email Address</label>
+        <input type="email" id="entry-email" class="form-input" placeholder="you@example.com" required />
+      </div>
+
+      <div class="form-group">
+        <label for="entry-username">SpokenWords Username</label>
+        <input type="text" id="entry-username" class="form-input" placeholder="@yourhandle" required />
+      </div>
+
+      <div class="form-group">
+        <label for="entry-poem-link">Link to Your Poem</label>
+        <input type="url" id="entry-poem-link" class="form-input" placeholder="https://spokenwords.../poem/..." required />
+        <div class="app-instructions">
+          <strong>How to find your poem link:</strong> Open the SpokenWords app, go to your <strong>Collection</strong>, select your poem, tap the <strong>Share button</strong> in the top right corner, and choose <strong>Copy Link</strong> from the share sheet.
+        </div>
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn-submit">
+        Submit Entry & Proceed to Payment (<span id="btn-fee-text">$0.00</span>)
+      </button>
+    </form>
+
+    <div id="form-status" class="status-box"></div>
+  </section>
+
+</main>
+
+<footer>
+  &copy; 2026 SpokenWords. All rights reserved.
+</footer>
+
+<script>
+// ============================================================
+// EASY CONTEST CONFIGURATION — UPDATE & REDEPLOY EACH CONTEST
+// ============================================================
+const CONTEST_CONFIG = {
+  contestId: "contest_nov_2026",              // Change this ID for each new contest so entries start fresh
+  theme: "General",              // Contest theme
+  endDate: "2026-12-14T23:59:59",             // Deadline (YYYY-MM-DDTHH:MM:SS local time)
+  initialPot: 20,                             // Starting pot amount in dollars (e.g., 50 = $50.00)
+  entryFee: 1                                 // Entry fee in dollars (e.g., 5 = $5.00)
+};
+// ============================================================
+
+document.addEventListener("DOMContentLoaded", function() {
+  const db = firebase.database();
+  const functions = firebase.functions();
+
+  function formatMoney(amount) {
+    return "$" + Number(amount).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  // Handle return success query parameter from Stripe checkout
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("success") === "true") {
+    const statusBox = document.getElementById("form-status");
+    statusBox.className = "status-box success";
+    statusBox.innerHTML = "<strong>🎉 Payment Successful!</strong> Your entry is successfully locked in and the pot has officially grown!";
+  }
+
+  // Format deadline nicely
+  const deadlineObj = new Date(CONTEST_CONFIG.endDate);
+  const formattedDeadline = deadlineObj.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+
+  // Populate static config text
+  document.getElementById("contest-theme-title").textContent = CONTEST_CONFIG.theme;
+  document.getElementById("rule-theme-name").textContent = `"${CONTEST_CONFIG.theme}"`;
+  document.getElementById("contest-deadline-text").textContent = formattedDeadline;
+  document.getElementById("rule-deadline-date").textContent = formattedDeadline;
+
+  const feeFormatted = formatMoney(CONTEST_CONFIG.entryFee);
+  document.getElementById("entry-fee-badge").textContent = `Entry Fee: ${feeFormatted} • Grows with every submission`;
+  document.getElementById("form-fee-text").textContent = feeFormatted;
+  document.getElementById("btn-fee-text").textContent = feeFormatted;
+
+  // Update Pot & Winner Payout dynamically (only counting paid entries)
+  function updatePotDisplay(paidEntryCount) {
+    const totalCollected = CONTEST_CONFIG.initialPot + (paidEntryCount * CONTEST_CONFIG.entryFee);
+    const winnerPrize = totalCollected / 2;
+
+    document.getElementById("total-pot-display").textContent = formatMoney(winnerPrize);
+    document.getElementById("winner-prize-display").textContent = formatMoney(winnerPrize);
+  }
+
+  // Initial render before Firebase responds
+  updatePotDisplay(0);
+
+  // Listen in real time to entries for this contest and filter for paid status
+  const entriesRef = db.ref(`contests/${CONTEST_CONFIG.contestId}/entries`);
+  entriesRef.on("value", (snapshot) => {
+    const entries = snapshot.val() || {};
+    let paidCount = 0;
+
+    Object.values(entries).forEach((entry) => {
+      if (entry.status === "paid") {
+        paidCount++;
+      }
+    });
+
+    updatePotDisplay(paidCount);
+  });
+
+  // Live Countdown Timer
+  function updateCountdown() {
+    const now = new Date().getTime();
+    const distance = deadlineObj.getTime() - now;
+
+    if (distance <= 0) {
+      document.getElementById("countdown-bar").innerHTML =
+        `<strong style="color: var(--accent); padding: 4px 12px;">Contest Closed — Winner Being Selected!</strong>`;
+      const submitBtn = document.getElementById("submit-btn");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Submissions Closed";
+      return;
+    }
+
+    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const mins = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+    const secs = Math.floor((distance % (1000 * 60)) / 1000);
+
+    document.getElementById("cd-days").textContent = String(days).padStart(2, "0");
+    document.getElementById("cd-hours").textContent = String(hours).padStart(2, "0");
+    document.getElementById("cd-mins").textContent = String(mins).padStart(2, "0");
+    document.getElementById("cd-secs").textContent = String(secs).padStart(2, "0");
+  }
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+
+  // Form Submission & Stripe Checkout Flow
+  const form = document.getElementById("contest-entry-form");
+  const statusBox = document.getElementById("form-status");
+  const submitBtn = document.getElementById("submit-btn");
+
+  form.addEventListener("submit", async function(e) {
+    e.preventDefault();
+
+    const email = document.getElementById("entry-email").value.trim();
+    let username = document.getElementById("entry-username").value.trim();
+    if (!username.startsWith("@")) username = "@" + username;
+    const poemLink = document.getElementById("entry-poem-link").value.trim();
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Redirecting to secure checkout...";
+    statusBox.className = "status-box"; // Clear previous errors
+
+    try {
+      const response = await fetch("https://us-central1-spoken-words-d16b8.cloudfunctions.net/createCheckoutSession", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          data: {
+            email: email,
+            username: username,
+            poemLink: poemLink,
+            contestId: CONTEST_CONFIG.contestId,
+            entryFee: CONTEST_CONFIG.entryFee,
+            successUrl: window.location.origin + window.location.pathname + "?success=true",
+            cancelUrl: window.location.origin + window.location.pathname
+          }
+        })
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || json.error) {
+        throw new Error(json.error || "Failed to create checkout session");
+      }
+
+      // Redirect to Stripe Hosted Checkout
+      window.location.href = json.result.checkoutUrl;
+    } catch (err) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `Submit Entry & Proceed to Payment (<span>${feeFormatted}</span>)`;
+      statusBox.className = "status-box error";
+      statusBox.textContent = "Could not start checkout. Please try again. (" + err.message + ")";
+    }
+  });
+});
+</script>
+</body>
+</html>
